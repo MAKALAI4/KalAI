@@ -166,6 +166,10 @@ input[type='number'] {
 
 .main {
   flex: 1;
+  /* flex items default to min-width:auto and refuse to shrink below
+     their content — that pushed .main past the viewport on phones */
+  min-width: 0;
+  max-width: 100%;
   margin-left: var(--sidebar-w);
   padding: 32px 40px 64px;
   position: relative;
@@ -308,21 +312,35 @@ input[type='number'] {
 }
 
 /* Floating theme toggle (mobile only) */
-.theme-fab {
-  display: none;
-  position: fixed;
-  top: 14px;
-  right: 14px;
-  z-index: 60;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  font-size: 19px;
+/* In-page top bar: scrolls away with the content (never floats) */
+.page-topbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.privacy-top {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow);
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-faint);
+  padding: 4px 10px;
+  border-radius: 99px;
+  border: 1px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.privacy-top:hover {
+  color: var(--text-dim);
+  border-color: var(--border);
+}
+
+.privacy-top.on {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* ========== Page header ========== */
@@ -1167,8 +1185,16 @@ input[type='number'] {
 .item-row .drag-handle {
   cursor: grab;
   color: var(--text-faint);
-  font-size: 14px;
+  font-size: 16px;
+  padding: 6px 4px;
   user-select: none;
+  /* pointer-drag on touch: the browser must not scroll from the handle */
+  touch-action: none;
+}
+
+.item-row .drag-handle:active {
+  cursor: grabbing;
+  color: var(--text);
 }
 
 .dash-slot {
@@ -1195,6 +1221,35 @@ input[type='number'] {
   border-style: dashed;
   /* while rearranging, taps can't open the category */
   pointer-events: none;
+  /* iPhone-style jiggle while rearranging */
+  animation: jiggle 0.32s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+
+.dash-slot.unlocked:nth-child(2n) > .dash-card {
+  animation-delay: 0.1s;
+  animation-duration: 0.36s;
+}
+
+.dash-slot.unlocked:nth-child(3n) > .dash-card {
+  animation-delay: 0.18s;
+}
+
+.dash-slot.row-dragging > .dash-card {
+  animation: none;
+  transform: scale(1.03);
+}
+
+@keyframes jiggle {
+  0% {
+    transform: rotate(-0.7deg);
+  }
+  50% {
+    transform: rotate(0.7deg);
+  }
+  100% {
+    transform: rotate(-0.7deg);
+  }
 }
 
 /* small built-in gray padlock under the dashboard title */
@@ -1259,18 +1314,18 @@ input[type='number'] {
   border-color: var(--accent);
 }
 
-/* ========== Mobile drawer (categories menu, right edge) ========== */
+/* ========== Mobile drawer (categories menu, LEFT edge, swipe to open) ========== */
 .drawer-tab {
   position: fixed;
-  right: 0;
+  left: 0;
   top: 42%;
   z-index: 70;
   width: 26px;
   height: 66px;
-  border-radius: 12px 0 0 12px;
+  border-radius: 0 12px 12px 0;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-right: none;
+  border-left: none;
   color: var(--text-dim);
   font-size: 14px;
   display: none;
@@ -1289,18 +1344,18 @@ input[type='number'] {
 
 .drawer {
   position: fixed;
-  right: 0;
+  left: 0;
   top: 0;
   bottom: 0;
   width: 224px;
   background: var(--bg-soft);
-  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
   z-index: 76;
   padding: 24px 12px 90px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  animation: slideLeft 0.2s ease;
+  animation: slideRight 0.2s ease;
 }
 
 .drawer-title {
@@ -1312,9 +1367,9 @@ input[type='number'] {
   padding: 0 12px 10px;
 }
 
-@keyframes slideLeft {
+@keyframes slideRight {
   from {
-    transform: translateX(100%);
+    transform: translateX(-100%);
   }
   to {
     transform: none;
@@ -1590,11 +1645,24 @@ input[type='number'] {
     flex: 1 1 100%;
   }
 
-  /* desktop drag affordances are useless on touch */
+  /* HTML5-drag handles are useless on touch (planner rows keep theirs:
+     they use pointer events, which do work with a finger) */
   .sticky .drag-handle,
-  .item-row .drag-handle,
   .budget-cat-head .drag-handle {
     display: none;
+  }
+
+  /* planner day cards: same clean centered look as notes/dashboard */
+  .day-card {
+    padding: 14px;
+  }
+
+  .day-head {
+    font-size: 16px;
+  }
+
+  .item-row {
+    gap: 8px;
   }
 
   .main {

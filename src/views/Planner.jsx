@@ -62,44 +62,59 @@ export default function Planner({ goTo }) {
     else if (item.kind === 'recurring') dispatch({ type: 'recurring/delete', id: item.id })
   }
 
-  // Reorder any kind of item inside one day (drop on another row).
-  // The dragged row unmounts on cross-day moves so dragend never fires
-  // on it — always clear the drag state here.
-  const dropOnItem = (agenda, date, targetItem) => {
-    setOverKey(null)
-    setOverDay(null)
-    if (!drag) return
-    const targetKey = agendaKey(targetItem)
-    if (drag.date !== date) return dropOnDay(date) // crossed into another day: move it
-    setDrag(null)
-    if (drag.key === targetKey) return
-    const keys = agenda.map(agendaKey)
-    const next = keys.filter((k) => k !== drag.key)
-    next.splice(next.indexOf(targetKey) + (keys.indexOf(drag.key) < keys.indexOf(targetKey) ? 1 : 0), 0, drag.key)
-    dispatch({ type: 'agenda/reorder', date, keys: next })
-  }
-
-  // Move a task or workout to another day (drop on the day card)
-  const dropOnDay = (date) => {
-    setOverKey(null)
-    setOverDay(null)
-    if (!drag) return
-    setDrag(null)
-    if (drag.date === date) return
-    if (drag.kind === 'task') dispatch({ type: 'task/update', id: drag.id, payload: { date } })
-    else if (drag.kind === 'workout') dispatch({ type: 'workout/update', id: drag.id, payload: { date } })
-  }
-
   const canMoveDays = (kind) => kind === 'task' || kind === 'workout'
 
-  // Touch-friendly reorder: ↑ / ↓ arrows (phones have no HTML5 drag)
-  const shiftItem = (agenda, date, item, dir) => {
-    const keys = agenda.map(agendaKey)
-    const i = keys.indexOf(agendaKey(item))
-    const j = i + dir
-    if (j < 0 || j >= keys.length) return
-    ;[keys[i], keys[j]] = [keys[j], keys[i]]
-    dispatch({ type: 'agenda/reorder', date, keys })
+  /* Finger / mouse drag via the ⠿ handle (pointer events work on touch,
+     unlike HTML5 drag & drop). Drop on a row of the same day to reorder;
+     drop anywhere on another day card to move the item to that day. */
+  const startRowDrag = (e, item, date) => {
+    if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return
+    e.preventDefault()
+    const dragInfo = { key: agendaKey(item), kind: item.kind, id: item.id, date }
+    setDrag(dragInfo)
+    const probe = (ev) => {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY)
+      return {
+        row: el?.closest('.item-row[data-key]') || null,
+        day: el?.closest('.day-card[data-date]') || null,
+      }
+    }
+    const onMove = (ev) => {
+      const { row, day } = probe(ev)
+      setOverKey(row && row.dataset.date === dragInfo.date ? row.dataset.key : null)
+      setOverDay(day && day.dataset.date !== dragInfo.date && canMoveDays(dragInfo.kind) ? day.dataset.date : null)
+      // keep dragging usable on long lists
+      if (ev.clientY < 90) window.scrollBy(0, -12)
+      else if (ev.clientY > window.innerHeight - 110) window.scrollBy(0, 12)
+    }
+    const onUp = (ev) => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      const { row, day } = probe(ev)
+      setDrag(null)
+      setOverKey(null)
+      setOverDay(null)
+      if (row && row.dataset.date === dragInfo.date && row.dataset.key !== dragInfo.key) {
+        // reorder inside the same day
+        const agenda = getAgendaForDate(state, dragInfo.date)
+        const keys = agenda.map(agendaKey)
+        const next = keys.filter((k) => k !== dragInfo.key)
+        next.splice(
+          next.indexOf(row.dataset.key) + (keys.indexOf(dragInfo.key) < keys.indexOf(row.dataset.key) ? 1 : 0),
+          0,
+          dragInfo.key,
+        )
+        dispatch({ type: 'agenda/reorder', date: dragInfo.date, keys: next })
+      } else if (day && day.dataset.date !== dragInfo.date && canMoveDays(dragInfo.kind)) {
+        // move to another day
+        if (dragInfo.kind === 'task') dispatch({ type: 'task/update', id: dragInfo.id, payload: { date: day.dataset.date } })
+        else dispatch({ type: 'workout/update', id: dragInfo.id, payload: { date: day.dataset.date } })
+      }
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
   }
 
   const openEdit = (item, date) => {
@@ -161,16 +176,9 @@ export default function Planner({ goTo }) {
 
         return (
           <div
-            className={`card day-card ${overDay === date && drag && drag.date !== date && canMoveDays(drag.kind) ? 'day-drop' : ''}`}
+            className={`card day-card ${overDay === date ? 'day-drop' : ''}`}
             key={date}
-            onDragOver={(e) => {
-              if (drag && drag.date !== date && canMoveDays(drag.kind)) {
-                e.preventDefault()
-                setOverDay(date)
-              }
-            }}
-            onDragLeave={() => setOverDay((o) => (o === date ? null : o))}
-            onDrop={() => dropOnDay(date)}
+            data-date={date}
           >
             <button className="day-head" onClick={() => toggleDay(date)}>
               <span className="day-chevron">{isOpen ? '▾' : '▸'}</span>
@@ -210,17 +218,14 @@ export default function Planner({ goTo }) {
                   const key = agendaKey(item)
                   return (
                     <div
-                      className={`item-row ${item.done ? 'done' : ''} ${overKey === key ? 'row-drag-over' : ''} ${drag?.key === key ? 'row-dragging' : ''}`}
+                      className={`item-row ${item.done ? 'done' : ''} ${overKey === key && drag?.key !== key ? 'row-drag-over' : ''} ${drag?.key === key ? 'row-dragging' : ''}`}
                       key={key}
-                      draggable
-                      onDragStart={() => setDrag({ key, kind: item.kind, id: item.id, date })}
-                      onDragEnd={() => { setDrag(null); setOverKey(null); setOverDay(null) }}
-                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setOverKey(key) }}
-                      onDragLeave={() => setOverKey((o) => (o === key ? null : o))}
-                      onDrop={(e) => { e.stopPropagation(); dropOnItem(agenda, date, item) }}
+                      data-key={key}
+                      data-date={date}
                     >
                       <span
                         className="drag-handle"
+                        onPointerDown={(e) => startRowDrag(e, item, date)}
                         title={canMoveDays(item.kind) ? 'Drag to reorder or onto another day' : 'Drag to reorder'}
                       >
                         ⠿
@@ -251,14 +256,6 @@ export default function Planner({ goTo }) {
                           )}
                         </div>
                       </div>
-                      <span className="m-only" style={{ display: 'inline-flex', gap: 2 }}>
-                        <button className="icon-btn" onClick={() => shiftItem(agenda, date, item, -1)} aria-label="move up">
-                          ↑
-                        </button>
-                        <button className="icon-btn" onClick={() => shiftItem(agenda, date, item, 1)} aria-label="move down">
-                          ↓
-                        </button>
-                      </span>
                       {item.kind !== 'shopping' && (
                         <button
                           className="icon-btn"

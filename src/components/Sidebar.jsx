@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { VIEWS } from '../App.jsx'
 import { useStore } from '../store/StoreContext.jsx'
 import { exportData, importData } from '../store/persistence.js'
@@ -22,6 +22,47 @@ export default function Sidebar({ view, setView, theme, toggleTheme, side, toggl
 
   const navItems = isMobile ? VIEWS.filter((v) => MOBILE_TABS.includes(v.id)) : VIEWS
   const drawerItems = VIEWS.filter((v) => !MOBILE_TABS.includes(v.id))
+
+  const drawerOpenRef = useRef(false)
+  drawerOpenRef.current = drawer
+
+  // Open the categories drawer by swiping right from the left edge,
+  // close it by swiping left anywhere.
+  useEffect(() => {
+    if (!isMobile) return
+    let startX = null
+    let startY = null
+    let fromEdge = false
+    const onStart = (e) => {
+      const t = e.touches[0]
+      startX = t.clientX
+      startY = t.clientY
+      fromEdge = t.clientX < 32
+    }
+    const onMove = (e) => {
+      if (startX == null) return
+      const t = e.touches[0]
+      const dx = t.clientX - startX
+      const dy = Math.abs(t.clientY - startY)
+      if (dy > 70) {
+        startX = null
+        return
+      }
+      if (!drawerOpenRef.current && fromEdge && dx > 55) {
+        setDrawer(true)
+        startX = null
+      } else if (drawerOpenRef.current && dx < -55) {
+        setDrawer(false)
+        startX = null
+      }
+    }
+    window.addEventListener('touchstart', onStart, { passive: true })
+    window.addEventListener('touchmove', onMove, { passive: true })
+    return () => {
+      window.removeEventListener('touchstart', onStart)
+      window.removeEventListener('touchmove', onMove)
+    }
+  }, [isMobile])
 
   const go = (id) => {
     setView(id)
@@ -84,11 +125,12 @@ export default function Sidebar({ view, setView, theme, toggleTheme, side, toggl
         </div>
       </aside>
 
-      {/* Mobile: retractable category menu on the right edge */}
+      {/* Mobile: retractable category menu on the LEFT edge —
+          swipe right from the edge (or tap the tab) to open */}
       {isMobile && (
         <>
           <button className="drawer-tab" onClick={() => setDrawer(true)} aria-label="Open categories menu">
-            ❮
+            ❯
           </button>
           {drawer && (
             <div className="drawer-backdrop" onClick={() => setDrawer(false)}>
@@ -105,7 +147,7 @@ export default function Sidebar({ view, setView, theme, toggleTheme, side, toggl
                   </button>
                 ))}
                 <button className="nav-item" style={{ marginTop: 'auto' }} onClick={() => setDrawer(false)}>
-                  <span className="nav-icon">❯</span>
+                  <span className="nav-icon">❮</span>
                   <span>Close</span>
                 </button>
               </div>

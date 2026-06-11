@@ -146,13 +146,17 @@ export default function App() {
         privacy={privacy}
         togglePrivacy={togglePrivacy}
       />
-      <button className="theme-fab" onClick={toggleTheme} title="Toggle theme">
-        {theme === 'dark' ? '☀' : '☾'}
-      </button>
-      <button className={`theme-fab privacy-fab ${privacy ? 'on' : ''}`} onClick={togglePrivacy} title="Privacy mode">
-        {privacy ? '◉' : '◎'}
-      </button>
       <main className="main">
+        <div className="page-topbar">
+          <button
+            className={`privacy-top ${privacy ? 'on' : ''}`}
+            onClick={togglePrivacy}
+            title={privacy ? 'Show sensitive content' : 'Blur sensitive content (privacy)'}
+          >
+            {privacy ? '◉' : '◎'}
+            <span>{privacy ? 'Privacy on' : 'Privacy'}</span>
+          </button>
+        </div>
         <div className="main-inner">
           <div className="view-area">{renderView()}</div>
           {view !== 'profile' && <StickyRail view={view} showAll={view === 'notes'} />}
