@@ -6,6 +6,8 @@ import { getSortedNotes } from '../store/selectors.js'
 export default function Notes({ goTo }) {
   const { state, dispatch } = useStore()
   const [text, setText] = useState('')
+  const [dragId, setDragId] = useState(null)
+  const [overId, setOverId] = useState(null)
 
   const notes = getSortedNotes(state)
 
@@ -14,6 +16,35 @@ export default function Notes({ goTo }) {
     if (!text.trim()) return
     dispatch({ type: 'note/add', payload: { text: text.trim() } })
     setText('')
+  }
+
+  /* Drag a note card by its ⠿ handle onto another card to reorder
+     (pointer events: works with mouse and finger alike). */
+  const startNoteDrag = (e, id) => {
+    if (e.button !== undefined && e.button !== 0 && e.pointerType === 'mouse') return
+    e.preventDefault()
+    setDragId(id)
+    const probe = (ev) => document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.note-card[data-id]')
+    const onMove = (ev) => {
+      const card = probe(ev)
+      setOverId(card && card.dataset.id !== id ? card.dataset.id : null)
+      if (ev.clientY < 90) window.scrollBy(0, -12)
+      else if (ev.clientY > window.innerHeight - 110) window.scrollBy(0, 12)
+    }
+    const onUp = (ev) => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      const card = probe(ev)
+      if (card && card.dataset.id !== id) {
+        dispatch({ type: 'note/reorder', fromId: id, toId: card.dataset.id })
+      }
+      setDragId(null)
+      setOverId(null)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
   }
 
   return (
@@ -43,17 +74,24 @@ export default function Notes({ goTo }) {
       ) : (
         <div className="notes-grid">
           {notes.map((n) => (
-            <div className={`note-card ${n.pinned ? 'pinned' : ''}`} key={n.id}>
+            <div
+              className={`note-card ${n.pinned ? 'pinned' : ''} ${overId === n.id ? 'drag-over' : ''} ${dragId === n.id ? 'row-dragging' : ''}`}
+              key={n.id}
+              data-id={n.id}
+            >
               <div className={`note-text ${n.blurred ? 'blurred' : ''}`}>{n.text}</div>
               <div className="note-foot">
-                <span>{new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span
+                    className="drag-handle"
+                    onPointerDown={(e) => startNoteDrag(e, n.id)}
+                    title="Drag onto another note to reorder"
+                  >
+                    ⠿
+                  </span>
+                  <span>{new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                </span>
                 <span style={{ display: 'flex', gap: 4 }}>
-                  <button className="icon-btn" onClick={() => dispatch({ type: 'note/move', id: n.id, dir: -1 })} title="Move earlier">
-                    ↑
-                  </button>
-                  <button className="icon-btn" onClick={() => dispatch({ type: 'note/move', id: n.id, dir: 1 })} title="Move later">
-                    ↓
-                  </button>
                   <button
                     className={`icon-btn ${n.blurred ? 'on' : ''}`}
                     onClick={() => dispatch({ type: 'note/toggleBlur', id: n.id })}

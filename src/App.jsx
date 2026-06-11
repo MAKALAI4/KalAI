@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Sidebar from './components/Sidebar.jsx'
-import StickyRail, { FloatingStickies } from './components/StickyRail.jsx'
+import StickyRail, { FloatingStickies, useIsMobile } from './components/StickyRail.jsx'
 import { useStore } from './store/StoreContext.jsx'
 import Dashboard from './views/Dashboard.jsx'
 import Planner from './views/Planner.jsx'
@@ -15,7 +15,7 @@ export const VIEWS = [
   { id: 'planner', label: 'Planner', icon: '☀' },
   { id: 'workouts', label: 'Workouts', icon: '⚡' },
   { id: 'budget', label: 'Budget', icon: '◍' },
-  { id: 'groceries', label: 'Groceries', icon: '🛒' },
+  { id: 'groceries', label: 'Shopping', icon: '🛒' },
   { id: 'notes', label: 'Notes', icon: '✎' },
   { id: 'profile', label: 'Profile', icon: '👤' },
 ]
@@ -50,6 +50,62 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('kalai-theme') || 'dark')
   const [side, setSide] = useState(() => localStorage.getItem('kalai-side') || 'left')
   const [privacy, setPrivacy] = useState(() => localStorage.getItem('kalai-privacy') === '1')
+  const [drawer, setDrawer] = useState(false)
+  const isMobile = useIsMobile()
+
+  const viewRef = useRef(view)
+  viewRef.current = view
+  const drawerRef = useRef(drawer)
+  drawerRef.current = drawer
+
+  /* Mobile swipe navigation:
+     swipe left  → Dashboard → Planner → Profile (and closes the menu)
+     swipe right → Profile → Planner → Dashboard;
+                   on Dashboard it opens the categories menu;
+                   on a category page it goes back to Dashboard. */
+  useEffect(() => {
+    if (!isMobile) return
+    const TABS = ['dashboard', 'planner', 'profile']
+    let sx = null
+    let sy = null
+    let blocked = false
+    const onStart = (e) => {
+      const t = e.touches[0]
+      sx = t.clientX
+      sy = t.clientY
+      blocked = !!e.target.closest('.drag-handle, .modal, input, textarea, select, .sticky, .dash-slot.unlocked, .check')
+    }
+    const onEnd = (e) => {
+      if (sx == null || blocked) {
+        sx = null
+        return
+      }
+      const t = e.changedTouches[0]
+      const dx = t.clientX - sx
+      const dy = Math.abs(t.clientY - sy)
+      sx = null
+      if (Math.abs(dx) < 70 || dy > 70) return
+      const cur = viewRef.current
+      const i = TABS.indexOf(cur)
+      if (dx < 0) {
+        // swipe left
+        if (drawerRef.current) setDrawer(false)
+        else if (i >= 0 && i < TABS.length - 1) setView(TABS[i + 1])
+      } else {
+        // swipe right
+        if (drawerRef.current) return
+        if (cur === 'dashboard') setDrawer(true)
+        else if (i > 0) setView(TABS[i - 1])
+        else if (i === -1) setView('dashboard')
+      }
+    }
+    window.addEventListener('touchstart', onStart, { passive: true })
+    window.addEventListener('touchend', onEnd, { passive: true })
+    return () => {
+      window.removeEventListener('touchstart', onStart)
+      window.removeEventListener('touchend', onEnd)
+    }
+  }, [isMobile])
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
@@ -145,9 +201,18 @@ export default function App() {
         toggleSide={toggleSide}
         privacy={privacy}
         togglePrivacy={togglePrivacy}
+        drawer={drawer}
+        setDrawer={setDrawer}
       />
       <main className="main">
         <div className="page-topbar">
+          {isMobile && view === 'dashboard' ? (
+            <button className="privacy-top" onClick={() => setDrawer(true)} title="Open categories menu">
+              ☰<span>Menu</span>
+            </button>
+          ) : (
+            <span />
+          )}
           <button
             className={`privacy-top ${privacy ? 'on' : ''}`}
             onClick={togglePrivacy}

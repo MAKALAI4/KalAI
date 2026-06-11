@@ -315,7 +315,8 @@ input[type='number'] {
 /* In-page top bar: scrolls away with the content (never floats) */
 .page-topbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 6px;
 }
 
@@ -1314,26 +1315,7 @@ input[type='number'] {
   border-color: var(--accent);
 }
 
-/* ========== Mobile drawer (categories menu, LEFT edge, swipe to open) ========== */
-.drawer-tab {
-  position: fixed;
-  left: 0;
-  top: 42%;
-  z-index: 70;
-  width: 26px;
-  height: 66px;
-  border-radius: 0 12px 12px 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: none;
-  color: var(--text-dim);
-  font-size: 14px;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow);
-}
-
+/* ========== Mobile drawer (categories menu, left, swipe/Menu pill) ========== */
 .drawer-backdrop {
   position: fixed;
   inset: 0;
@@ -1347,15 +1329,30 @@ input[type='number'] {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 224px;
+  width: 250px;
   background: var(--bg-soft);
   border-right: 1px solid var(--border);
   z-index: 76;
-  padding: 24px 12px 90px;
+  padding: 24px 14px 100px;
   display: flex;
   flex-direction: column;
   gap: 4px;
   animation: slideRight 0.2s ease;
+}
+
+/* drawer items: icon on the left, larger text on its right —
+   same horizontal layout as the desktop sidebar */
+.drawer .nav-item {
+  flex-direction: row;
+  gap: 14px;
+  padding: 13px 14px;
+  font-size: 17.5px;
+  font-weight: 500;
+}
+
+.drawer .nav-item .nav-icon {
+  font-size: 21px;
+  width: 26px;
 }
 
 .drawer-title {
@@ -1529,6 +1526,25 @@ input[type='number'] {
   border-color: var(--orange);
 }
 
+.note-card.drag-over {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.note-card .drag-handle {
+  cursor: grab;
+  color: var(--text-faint);
+  font-size: 16px;
+  padding: 2px 4px;
+  user-select: none;
+  touch-action: none;
+}
+
+.note-card .drag-handle:active {
+  cursor: grabbing;
+  color: var(--text);
+}
+
 .note-card .note-text {
   flex: 1;
   white-space: pre-wrap;
@@ -1613,8 +1629,14 @@ input[type='number'] {
     display: inline-flex !important;
   }
 
-  .drawer-tab {
-    display: flex;
+  /* no flex container on mobile = no possible left/right asymmetry:
+     content stacks full-width, cards get identical margins both sides */
+  .main-inner {
+    display: block;
+  }
+
+  .sticky-rail {
+    margin-top: 18px;
   }
 
   /* Budget rows wrap instead of overflowing (this caused the zoom-out
@@ -1667,19 +1689,16 @@ input[type='number'] {
 
   .main {
     margin-left: 0;
-    padding: 20px 16px 96px;
+    padding: 20px 16px 112px;
   }
 
-  .theme-fab {
-    display: flex;
-  }
-
+  /* bottom tab bar (+20% taller) */
   .sidebar {
     top: auto;
     bottom: 0;
     right: 0;
     width: 100%;
-    height: 66px;
+    height: 80px;
     flex-direction: row;
     align-items: center;
     padding: 0 8px;
@@ -1701,15 +1720,16 @@ input[type='number'] {
     gap: 0;
   }
 
-  .nav-item {
+  /* only the bottom bar stacks icon above text — drawer items stay horizontal */
+  .sidebar .nav-item {
     flex-direction: column;
-    gap: 3px;
-    padding: 6px 10px;
-    font-size: 12px;
+    gap: 4px;
+    padding: 8px 12px;
+    font-size: 13.5px;
   }
 
-  .nav-item .nav-icon {
-    font-size: 19px;
+  .sidebar .nav-item .nav-icon {
+    font-size: 23px;
   }
 
   .page-header .titles h1 {

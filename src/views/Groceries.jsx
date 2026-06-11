@@ -129,8 +129,8 @@ export default function Groceries({ goTo }) {
   return (
     <div>
       <PageHeader
-        title="Groceries"
-        subtitle="Shopping lists, linked to your grocery budget and planner"
+        title="Shopping"
+        subtitle="Shopping lists, linked to your budget and planner"
         goTo={goTo}
         action={
           carts.length < 3 ? (

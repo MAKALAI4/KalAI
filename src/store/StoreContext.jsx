@@ -283,12 +283,13 @@ function reducer(state, action) {
         ...state,
         notes: state.notes.map((n) => (n.id === action.id ? { ...n, blurred: !n.blurred } : n)),
       }
-    case 'note/move': {
+    case 'note/reorder': {
       const list = [...state.notes]
-      const i = list.findIndex((n) => n.id === action.id)
-      const j = i + action.dir
-      if (i < 0 || j < 0 || j >= list.length) return state
-      ;[list[i], list[j]] = [list[j], list[i]]
+      const from = list.findIndex((n) => n.id === action.fromId)
+      const to = list.findIndex((n) => n.id === action.toId)
+      if (from < 0 || to < 0) return state
+      const [moved] = list.splice(from, 1)
+      list.splice(to, 0, moved)
       return { ...state, notes: list }
     }
     case 'note/delete':

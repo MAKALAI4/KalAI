@@ -139,7 +139,7 @@ export default function Dashboard({ goTo }) {
       </DashboardCard>
     ),
     groceries: (
-      <DashboardCard icon="🛒" color="orange" title="Groceries" hint="Shopping list" onClick={() => goTo('groceries')}>
+      <DashboardCard icon="🛒" color="orange" title="Shopping" hint="Shopping list" onClick={() => goTo('groceries')}>
         <div className="dash-stat">
           {groceryList.toBuy.length}
           <span className="unit">item{groceryList.toBuy.length !== 1 ? 's' : ''} to buy</span>
