@@ -26,7 +26,9 @@ self.addEventListener('fetch', (event) => {
         return response
       })
       .catch(() =>
-        caches.match(request).then((match) => match || (request.mode === 'navigate' ? caches.match('/') : undefined)),
+        caches
+          .match(request)
+          .then((match) => match || (request.mode === 'navigate' ? caches.match(self.registration.scope) : undefined)),
       ),
   )
 })
