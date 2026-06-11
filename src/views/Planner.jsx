@@ -14,6 +14,7 @@ export default function Planner({ goTo }) {
   const [drag, setDrag] = useState(null) // { key, kind, id, date }
   const [overKey, setOverKey] = useState(null)
   const [overDay, setOverDay] = useState(null)
+  const [edit, setEdit] = useState(null) // { kind, id, title, time, date, days }
 
   const next7 = [...Array(7)].map((_, i) => addDaysISO(today, i))
 
@@ -90,6 +91,51 @@ export default function Planner({ goTo }) {
   }
 
   const canMoveDays = (kind) => kind === 'task' || kind === 'workout'
+
+  // Touch-friendly reorder: ↑ / ↓ arrows (phones have no HTML5 drag)
+  const shiftItem = (agenda, date, item, dir) => {
+    const keys = agenda.map(agendaKey)
+    const i = keys.indexOf(agendaKey(item))
+    const j = i + dir
+    if (j < 0 || j >= keys.length) return
+    ;[keys[i], keys[j]] = [keys[j], keys[i]]
+    dispatch({ type: 'agenda/reorder', date, keys })
+  }
+
+  const openEdit = (item, date) => {
+    setEdit({
+      kind: item.kind,
+      id: item.id,
+      title: item.title,
+      time: item.time || '',
+      date,
+      days: item.days && item.days.length ? item.days : [1, 2, 3, 4, 5, 6, 0],
+    })
+  }
+
+  const saveEdit = (e) => {
+    e.preventDefault()
+    if (!edit.title.trim()) return
+    const title = edit.title.trim()
+    if (edit.kind === 'task') {
+      dispatch({ type: 'task/update', id: edit.id, payload: { title, time: edit.time, date: edit.date } })
+    } else if (edit.kind === 'workout') {
+      dispatch({ type: 'workout/update', id: edit.id, payload: { name: title, time: edit.time, date: edit.date } })
+    } else if (edit.kind === 'recurring') {
+      dispatch({
+        type: 'recurring/update',
+        id: edit.id,
+        payload: { title, time: edit.time, days: edit.days.length === 7 ? [] : edit.days },
+      })
+    }
+    setEdit(null)
+  }
+
+  const toggleEditDay = (d) =>
+    setEdit((f) => ({
+      ...f,
+      days: f.days.includes(d) ? f.days.filter((x) => x !== d) : [...f.days, d],
+    }))
 
   const todayAgenda = getAgendaForDate(state, today)
   const doneToday = todayAgenda.filter((a) => a.done).length
@@ -205,6 +251,24 @@ export default function Planner({ goTo }) {
                           )}
                         </div>
                       </div>
+                      <span className="m-only" style={{ display: 'inline-flex', gap: 2 }}>
+                        <button className="icon-btn" onClick={() => shiftItem(agenda, date, item, -1)} aria-label="move up">
+                          ↑
+                        </button>
+                        <button className="icon-btn" onClick={() => shiftItem(agenda, date, item, 1)} aria-label="move down">
+                          ↓
+                        </button>
+                      </span>
+                      {item.kind !== 'shopping' && (
+                        <button
+                          className="icon-btn"
+                          onClick={() => openEdit(item, date)}
+                          aria-label="edit"
+                          title={item.kind === 'workout' ? 'Edit session name / time / date' : 'Edit (change the date to move it to another day)'}
+                        >
+                          ✎
+                        </button>
+                      )}
                       {(item.kind === 'task' || item.kind === 'recurring') && (
                         <button
                           className="icon-btn danger"
@@ -223,6 +287,58 @@ export default function Planner({ goTo }) {
           </div>
         )
       })}
+
+      {edit && (
+        <Modal title={`Edit ${edit.kind === 'workout' ? 'session' : edit.kind === 'recurring' ? 'recurring task' : 'task'}`} onClose={() => setEdit(null)}>
+          <form className="form-grid" onSubmit={saveEdit}>
+            <div className="field">
+              <label>{edit.kind === 'workout' ? 'Session name' : 'Task'}</label>
+              <input autoFocus value={edit.title} onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
+            </div>
+            <div className="form-row">
+              <div className="field">
+                <label>Time (optional)</label>
+                <input type="time" value={edit.time} onChange={(e) => setEdit({ ...edit, time: e.target.value })} />
+              </div>
+              {edit.kind !== 'recurring' && (
+                <div className="field">
+                  <label>Date (change it to move to another day)</label>
+                  <input
+                    type="date"
+                    value={edit.date}
+                    onChange={(e) => e.target.value && setEdit({ ...edit, date: e.target.value })}
+                  />
+                </div>
+              )}
+            </div>
+            {edit.kind === 'recurring' && (
+              <div className="field">
+                <label>Repeat on</label>
+                <div className="day-chips">
+                  {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                    <button
+                      type="button"
+                      key={d}
+                      className={`day-chip ${edit.days.includes(d) ? 'on' : ''}`}
+                      onClick={() => toggleEditDay(d)}
+                    >
+                      {WEEKDAY_LABELS[d]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="modal-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setEdit(null)}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={edit.kind === 'recurring' && edit.days.length === 0}>
+                Save
+              </button>
+            </div>
+          </form>
+        </Modal>
+      )}
 
       {showAdd && (
         <Modal title="Add task" onClose={() => setShowAdd(false)}>

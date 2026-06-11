@@ -32,12 +32,34 @@ export default function Dashboard({ goTo }) {
 
   const order = state.dashOrder || DEFAULT_DASH_ORDER
 
-  const drop = (target) => {
-    setOverId(null)
-    if (!dragId || dragId === target) return
-    const next = order.filter((id) => id !== dragId)
-    next.splice(next.indexOf(target) + (order.indexOf(dragId) < order.indexOf(target) ? 1 : 0), 0, dragId)
-    dispatch({ type: 'dash/setOrder', order: next })
+  /* Pointer-based drag (mouse AND touch — HTML5 drag doesn't work on
+     phones). While unlocked, clicks into categories are disabled. */
+  const startDrag = (e, id) => {
+    if (locked) return
+    e.preventDefault()
+    setDragId(id)
+    const slotAt = (ev) => document.elementFromPoint(ev.clientX, ev.clientY)?.closest('.dash-slot')
+    const onMove = (ev) => {
+      const el = slotAt(ev)
+      setOverId(el ? el.dataset.slot : null)
+    }
+    const onUp = (ev) => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
+      const el = slotAt(ev)
+      const target = el?.dataset.slot
+      if (target && target !== id) {
+        const next = order.filter((x) => x !== id)
+        next.splice(next.indexOf(target) + (order.indexOf(id) < order.indexOf(target) ? 1 : 0), 0, id)
+        dispatch({ type: 'dash/setOrder', order: next })
+      }
+      setDragId(null)
+      setOverId(null)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onUp)
   }
 
   const todayLabel = new Date().toLocaleDateString('en-US', {
@@ -161,13 +183,9 @@ export default function Dashboard({ goTo }) {
             CARDS[id] && (
               <div
                 key={id}
+                data-slot={id}
                 className={`dash-slot ${overId === id ? 'drag-over' : ''} ${dragId === id ? 'row-dragging' : ''} ${locked ? '' : 'unlocked'}`}
-                draggable={!locked}
-                onDragStart={locked ? undefined : () => setDragId(id)}
-                onDragEnd={() => { setDragId(null); setOverId(null) }}
-                onDragOver={locked ? undefined : (e) => { e.preventDefault(); setOverId(id) }}
-                onDragLeave={() => setOverId((o) => (o === id ? null : o))}
-                onDrop={locked ? undefined : () => drop(id)}
+                onPointerDown={locked ? undefined : (e) => startDrag(e, id)}
               >
                 {CARDS[id]}
               </div>

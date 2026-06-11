@@ -58,6 +58,13 @@ function reducer(state, action) {
         }),
       }
     }
+    case 'recurring/update':
+      return {
+        ...state,
+        recurringTasks: state.recurringTasks.map((r) =>
+          r.id === action.id ? { ...r, ...action.payload } : r,
+        ),
+      }
     case 'recurring/delete':
       return { ...state, recurringTasks: state.recurringTasks.filter((r) => r.id !== action.id) }
 
@@ -276,6 +283,14 @@ function reducer(state, action) {
         ...state,
         notes: state.notes.map((n) => (n.id === action.id ? { ...n, blurred: !n.blurred } : n)),
       }
+    case 'note/move': {
+      const list = [...state.notes]
+      const i = list.findIndex((n) => n.id === action.id)
+      const j = i + action.dir
+      if (i < 0 || j < 0 || j >= list.length) return state
+      ;[list[i], list[j]] = [list[j], list[i]]
+      return { ...state, notes: list }
+    }
     case 'note/delete':
       return { ...state, notes: state.notes.filter((n) => n.id !== action.id) }
 

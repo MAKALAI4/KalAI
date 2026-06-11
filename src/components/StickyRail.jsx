@@ -19,7 +19,7 @@ export function useIsMobile() {
   return mobile
 }
 
-export function StickyCard({ s, showCat, floating, moveable = true, onReorderDrop, dragState }) {
+export function StickyCard({ s, showCat, floating, moveable = true, onReorderDrop, dragState, onShift }) {
   const { dispatch } = useStore()
   const update = (payload) => dispatch({ type: 'sticky/update', id: s.id, payload })
 
@@ -93,6 +93,16 @@ export function StickyCard({ s, showCat, floating, moveable = true, onReorderDro
         )}
         {showCat && <span className="sticky-cat">{viewLabel(s.view)}</span>}
         <span style={{ flex: 1 }} />
+        {onShift && (
+          <span className="m-only" style={{ display: 'inline-flex' }}>
+            <button className="icon-btn" title="Move up" onClick={() => onShift(-1)}>
+              ↑
+            </button>
+            <button className="icon-btn" title="Move down" onClick={() => onShift(1)}>
+              ↓
+            </button>
+          </span>
+        )}
         {floating && (
           <button className="icon-btn" title="Back to side panel" onClick={() => update({ pos: null })}>
             ⇥
@@ -177,7 +187,7 @@ export default function StickyRail({ view, showAll = false }) {
         </button>
       )}
 
-      {stickies.map((s) => (
+      {stickies.map((s, i) => (
         <StickyCard
           s={s}
           key={s.id}
@@ -185,6 +195,10 @@ export default function StickyRail({ view, showAll = false }) {
           moveable={!showAll && !isMobile}
           onReorderDrop={reorderDrop}
           dragState={{ set: setDragId }}
+          onShift={(dir) => {
+            const target = stickies[i + dir]
+            if (target) dispatch({ type: 'sticky/reorder', fromId: s.id, toId: target.id })
+          }}
         />
       ))}
     </aside>

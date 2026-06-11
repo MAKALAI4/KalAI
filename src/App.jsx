@@ -8,6 +8,7 @@ import Workouts from './views/Workouts.jsx'
 import Budget from './views/Budget.jsx'
 import Groceries from './views/Groceries.jsx'
 import Notes from './views/Notes.jsx'
+import Profile from './views/Profile.jsx'
 
 export const VIEWS = [
   { id: 'dashboard', label: 'Dashboard', icon: '◧' },
@@ -16,7 +17,32 @@ export const VIEWS = [
   { id: 'budget', label: 'Budget', icon: '◍' },
   { id: 'groceries', label: 'Groceries', icon: '🛒' },
   { id: 'notes', label: 'Notes', icon: '✎' },
+  { id: 'profile', label: 'Profile', icon: '👤' },
 ]
+
+/* Android Chrome forbids `new Notification()` in page context —
+   notifications must go through the service worker when available. */
+function showNotification(title, body) {
+  const opts = { body, icon: `${import.meta.env.BASE_URL}icon-192.png` }
+  const fallback = () => {
+    try {
+      new Notification(title, opts)
+    } catch {
+      /* unsupported context */
+    }
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker
+      .getRegistration()
+      .then((reg) => {
+        if (reg && reg.showNotification) reg.showNotification(title, opts)
+        else fallback()
+      })
+      .catch(fallback)
+  } else {
+    fallback()
+  }
+}
 
 export default function App() {
   const { state } = useStore()
@@ -61,10 +87,10 @@ export default function App() {
             const key = `${w.id}-${min}`
             const diff = (target - now) / 60000
             if (diff <= min && diff > min - 6 && !fired.includes(key)) {
-              new Notification(`Workout in ${min === 60 ? '1 hour' : '30 minutes'}`, {
-                body: `${w.name}${w.time ? ` — ${w.time}` : ''}`,
-                icon: `${import.meta.env.BASE_URL}icon-192.png`,
-              })
+              showNotification(
+                `Workout in ${min === 60 ? '1 hour' : '30 minutes'}`,
+                `${w.name}${w.time ? ` — ${w.time}` : ''}`,
+              )
               fired.push(key)
               changed = true
             }
@@ -91,6 +117,18 @@ export default function App() {
         return <Groceries goTo={setView} />
       case 'notes':
         return <Notes goTo={setView} />
+      case 'profile':
+        return (
+          <Profile
+            goTo={setView}
+            theme={theme}
+            toggleTheme={toggleTheme}
+            privacy={privacy}
+            togglePrivacy={togglePrivacy}
+            side={side}
+            toggleSide={toggleSide}
+          />
+        )
       default:
         return <Dashboard goTo={setView} />
     }
@@ -117,7 +155,7 @@ export default function App() {
       <main className="main">
         <div className="main-inner">
           <div className="view-area">{renderView()}</div>
-          <StickyRail view={view} showAll={view === 'notes'} />
+          {view !== 'profile' && <StickyRail view={view} showAll={view === 'notes'} />}
         </div>
         <FloatingStickies view={view} />
       </main>

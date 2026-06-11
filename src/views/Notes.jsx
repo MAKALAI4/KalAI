@@ -48,6 +48,12 @@ export default function Notes({ goTo }) {
               <div className="note-foot">
                 <span>{new Date(n.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
                 <span style={{ display: 'flex', gap: 4 }}>
+                  <button className="icon-btn" onClick={() => dispatch({ type: 'note/move', id: n.id, dir: -1 })} title="Move earlier">
+                    ↑
+                  </button>
+                  <button className="icon-btn" onClick={() => dispatch({ type: 'note/move', id: n.id, dir: 1 })} title="Move later">
+                    ↓
+                  </button>
                   <button
                     className={`icon-btn ${n.blurred ? 'on' : ''}`}
                     onClick={() => dispatch({ type: 'note/toggleBlur', id: n.id })}

@@ -232,9 +232,10 @@ export function getWorkoutsSplit(state) {
   return { upcoming, past }
 }
 
-/* ---- Notes ---- */
+/* ---- Notes ----
+   Pinned notes first, then manual order (↑/↓ arrows on the cards). */
 export function getSortedNotes(state) {
-  return [...state.notes].sort((a, b) => (b.pinned - a.pinned) || (b.createdAt - a.createdAt))
+  return [...state.notes].sort((a, b) => b.pinned - a.pinned)
 }
 
 /* ---- Date display helpers ---- */

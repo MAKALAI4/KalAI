@@ -71,6 +71,9 @@ html,
 body {
   margin: 0;
   padding: 0;
+  /* content wider than the viewport made mobile browsers zoom out */
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 body {
@@ -191,6 +194,18 @@ input[type='number'] {
 .view-area {
   flex: 1;
   min-width: 0;
+  max-width: 100%;
+}
+
+.card,
+.link-banner,
+.stat-tile {
+  min-width: 0;
+}
+
+/* mobile-only helpers (↑↓ reorder arrows…) */
+.m-only {
+  display: none !important;
 }
 
 .view-area > div {
@@ -1170,9 +1185,16 @@ input[type='number'] {
   box-shadow: 0 0 0 2px var(--accent-soft);
 }
 
-.dash-slot.unlocked > .dash-card {
+.dash-slot.unlocked {
+  /* pointer-drag needs the browser to NOT scroll on touch */
+  touch-action: none;
   cursor: grab;
+}
+
+.dash-slot.unlocked > .dash-card {
   border-style: dashed;
+  /* while rearranging, taps can't open the category */
+  pointer-events: none;
 }
 
 /* small built-in gray padlock under the dashboard title */
@@ -1235,6 +1257,93 @@ input[type='number'] {
 .privacy-fab.on {
   color: var(--accent);
   border-color: var(--accent);
+}
+
+/* ========== Mobile drawer (categories menu, right edge) ========== */
+.drawer-tab {
+  position: fixed;
+  right: 0;
+  top: 42%;
+  z-index: 70;
+  width: 26px;
+  height: 66px;
+  border-radius: 12px 0 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-right: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow);
+}
+
+.drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 75;
+  animation: fadeIn 0.15s ease;
+}
+
+.drawer {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 224px;
+  background: var(--bg-soft);
+  border-left: 1px solid var(--border);
+  z-index: 76;
+  padding: 24px 12px 90px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: slideLeft 0.2s ease;
+}
+
+.drawer-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  padding: 0 12px 10px;
+}
+
+@keyframes slideLeft {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* ========== Profile ========== */
+.profile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 4px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.profile-row:last-child {
+  border-bottom: none;
+}
+
+.profile-row .title {
+  font-weight: 500;
+}
+
+.profile-row .meta-sub {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-top: 1px;
 }
 
 /* ========== Groceries: carts, favorites, history ========== */
@@ -1443,6 +1552,49 @@ input[type='number'] {
 @media (max-width: 860px) {
   body {
     font-size: 16px;
+  }
+
+  .m-only {
+    display: inline-flex !important;
+  }
+
+  .drawer-tab {
+    display: flex;
+  }
+
+  /* Budget rows wrap instead of overflowing (this caused the zoom-out
+     and the off-center planner) — same width for every category */
+  .budget-cat-head {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .budget-cat-head .name {
+    flex: 1 1 60%;
+  }
+
+  .amount-input {
+    width: 80px;
+  }
+
+  .day-head {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .cart-add {
+    flex-wrap: wrap;
+  }
+
+  .cart-add input:first-child {
+    flex: 1 1 100%;
+  }
+
+  /* desktop drag affordances are useless on touch */
+  .sticky .drag-handle,
+  .item-row .drag-handle,
+  .budget-cat-head .drag-handle {
+    display: none;
   }
 
   .main {
